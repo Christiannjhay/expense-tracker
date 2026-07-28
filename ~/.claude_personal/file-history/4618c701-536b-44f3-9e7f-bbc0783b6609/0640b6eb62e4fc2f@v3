@@ -1,0 +1,36 @@
+import type { Period } from "./types";
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+export function formatPeriodRange(
+  period: Pick<Period, "type" | "year" | "month" | "start_date" | "end_date">
+): string {
+  if (period.type === "month") {
+    if (period.year == null || period.month == null) return "—";
+    return `${MONTH_NAMES[period.month - 1] ?? period.month} ${period.year}`;
+  }
+
+  if (!period.start_date || !period.end_date) return "—";
+  return `${period.start_date} – ${period.end_date}`;
+}
+
+export function formatBudget(totalBudget: number | null): string {
+  if (totalBudget == null) return "—";
+  return `$${totalBudget.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}

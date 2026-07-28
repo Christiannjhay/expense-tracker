@@ -1,0 +1,158 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+export type PeriodFormState = {
+  error: string | null;
+};
+
+type PeriodInput = {
+  name: string;
+  type: "month" | "trip";
+  total_budget: number | null;
+  year: number | null;
+  month: number | null;
+  start_date: string | null;
+  end_date: string | null;
+};
+
+function parsePeriodInput(
+  formData: FormData
+): { data: PeriodInput } | { error: string } {
+  const name = formData.get("name");
+  const type = formData.get("type");
+  const totalBudgetRaw = formData.get("total_budget");
+
+  if (typeof name !== "string" || name.trim().length === 0) {
+    return { error: "Name is required." };
+  }
+
+  if (type !== "month" && type !== "trip") {
+    return { error: "Choose a period type." };
+  }
+
+  let totalBudget: number | null = null;
+  if (typeof totalBudgetRaw === "string" && totalBudgetRaw.trim() !== "") {
+    totalBudget = Number(totalBudgetRaw);
+    if (Number.isNaN(totalBudget) || totalBudget < 0) {
+      return { error: "Budget must be a positive number." };
+    }
+  }
+
+  if (type === "month") {
+    const year = Number(formData.get("year"));
+    const month = Number(formData.get("month"));
+    if (
+      !Number.isInteger(year) ||
+      !Number.isInteger(month) ||
+      month < 1 ||
+      month > 12
+    ) {
+      return { error: "Enter a valid year and month." };
+    }
+    return {
+      data: {
+        name: name.trim(),
+        type,
+        total_budget: totalBudget,
+        year,
+        month,
+        start_date: null,
+        end_date: null,
+      },
+    };
+  }
+
+  const startDate = formData.get("start_date");
+  const endDate = formData.get("end_date");
+  if (
+    typeof startDate !== "string" ||
+    typeof endDate !== "string" ||
+    !startDate ||
+    !endDate
+  ) {
+    return { error: "Enter a start and end date." };
+  }
+  if (startDate > endDate) {
+    return { error: "Start date must be before end date." };
+  }
+
+  return {
+    data: {
+      name: name.trim(),
+      type,
+      total_budget: totalBudget,
+      year: null,
+      month: null,
+      start_date: startDate,
+      end_date: endDate,
+    },
+  };
+}
+
+export async function createPeriod(
+  _prevState: PeriodFormState,
+  formData: FormData
+): Promise<PeriodFormState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be logged in." };
+  }
+
+  const parsed = parsePeriodInput(formData);
+  if ("error" in parsed) {
+    return parsed;
+  }
+
+  const { data: period, error } = await supabase
+    .from("periods")
+    .insert({ ...parsed.data, user_id: user.id })
+    .select("id")
+    .single();
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  redirect(`/periods/${period.id}`);
+}
+
+export async function updatePeriod(
+  periodId: number,
+  _prevState: PeriodFormState,
+  formData: FormData
+): Promise<PeriodFormState> {
+  const supabase = await createClient();
+
+  const parsed = parsePeriodInput(formData);
+  if ("error" in parsed) {
+    return parsed;
+  }
+
+  const { error } = await supabase
+    .from("periods")
+    .update(parsed.data)
+    .eq("id", periodId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  redirect(`/periods/${periodId}`);
+}
+
+export async function deletePeriod(periodId: number) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("periods").delete().eq("id", periodId);
+
+  if (error) {
+    redirect(`/periods/${periodId}`);
+  }
+
+  redirect("/periods");
+}

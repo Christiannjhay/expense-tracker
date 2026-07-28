@@ -1,0 +1,79 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { formatBudget, formatPeriodRange } from "@/lib/periods/format";
+import type { Period } from "@/lib/periods/types";
+import { PeriodRow } from "./period-row";
+
+export const metadata: Metadata = {
+  title: "Periods — Expense Tracker",
+};
+
+export default async function PeriodsPage() {
+  const supabase = await createClient();
+  const { data: periods, error } = await supabase
+    .from("periods")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .returns<Period[]>();
+
+  const showBudget = periods?.some((period) => period.total_budget != null) ?? false;
+
+  return (
+    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          Periods
+        </h1>
+        <Link
+          href="/periods/new"
+          className="flex h-10 items-center rounded-lg bg-teal-600 px-4 text-sm font-medium text-white transition-colors hover:bg-teal-700"
+        >
+          New period
+        </Link>
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-6 text-sm text-red-600 dark:text-red-400">
+          {error.message}
+        </p>
+      )}
+
+      {!error && periods && periods.length === 0 && (
+        <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
+          No periods yet. Create one to start tracking expenses.
+        </p>
+      )}
+
+      {!error && periods && periods.length > 0 && (
+        <div className="mt-6 overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-zinc-50 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+              <tr>
+                <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Type</th>
+                <th className="px-4 py-3 font-medium">When</th>
+                {showBudget && (
+                  <th className="px-4 py-3 font-medium">Budget</th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              {periods.map((period) => (
+                <PeriodRow
+                  key={period.id}
+                  id={period.id}
+                  name={period.name}
+                  type={period.type}
+                  when={formatPeriodRange(period)}
+                  budget={formatBudget(period.total_budget)}
+                  showBudget={showBudget}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </main>
+  );
+}
