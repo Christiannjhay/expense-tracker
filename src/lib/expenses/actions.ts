@@ -72,7 +72,7 @@ export async function createExpense(
     return { error: error.message };
   }
 
-  redirect(`/periods/${periodId}`);
+  redirect(`/periods/${periodId}?toast=expense-created`);
 }
 
 export async function updateExpense(

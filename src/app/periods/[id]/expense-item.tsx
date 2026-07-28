@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { deleteExpense, updateExpense } from "@/lib/expenses/actions";
 import { ExpenseForm } from "@/app/periods/[id]/expense-form";
 import { Modal } from "@/app/modal";
+import { DeleteConfirm } from "@/app/delete-confirm";
 import { formatBudget, formatDate } from "@/lib/periods/format";
+import { useToast } from "@/app/toast-context";
 
 type ExpenseData = {
   id: number;
@@ -18,46 +20,42 @@ type ExpenseData = {
 
 function useExpenseEditModal(expenseId: number) {
   const [open, setOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const router = useRouter();
+  const { showToast } = useToast();
 
   async function handleDelete() {
-    if (!window.confirm("Delete this expense? This can't be undone.")) {
-      return;
-    }
-    setDeleting(true);
     const result = await deleteExpense(expenseId);
-    if (result.error) {
-      window.alert(result.error);
-      setDeleting(false);
-      return;
+    if (!result.error) {
+      setOpen(false);
+      showToast("Expense deleted");
+      router.refresh();
     }
-    setOpen(false);
-    router.refresh();
+    return result;
   }
 
   function handleSuccess() {
     setOpen(false);
+    showToast("Expense saved");
     router.refresh();
   }
 
-  return { open, setOpen, deleting, handleDelete, handleSuccess };
+  return { open, setOpen, handleDelete, handleSuccess };
 }
 
 function EditExpenseModalBody({
   expense,
   categories,
   context,
+  open,
   onSuccess,
-  deleting,
   onDelete,
 }: {
   expense: ExpenseData;
   categories: { id: number; name: string }[];
   context: "general" | "trip";
+  open: boolean;
   onSuccess: () => void;
-  deleting: boolean;
-  onDelete: () => void;
+  onDelete: () => Promise<{ error: string | null }>;
 }) {
   return (
     <>
@@ -76,14 +74,12 @@ function EditExpenseModalBody({
         onSuccess={onSuccess}
       />
       <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={deleting}
-          className="flex h-10 w-full items-center justify-center rounded-lg bg-red-600 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {deleting ? "Deleting…" : "Delete expense"}
-        </button>
+        <DeleteConfirm
+          key={String(open)}
+          label="Delete expense"
+          confirmMessage="Delete this expense? This can't be undone."
+          onConfirm={onDelete}
+        />
       </div>
     </>
   );
@@ -100,7 +96,7 @@ export function ExpenseCard({
   context: "general" | "trip";
   currency: string;
 }) {
-  const { open, setOpen, deleting, handleDelete, handleSuccess } =
+  const { open, setOpen, handleDelete, handleSuccess } =
     useExpenseEditModal(expense.id);
 
   return (
@@ -133,8 +129,8 @@ export function ExpenseCard({
           expense={expense}
           categories={categories}
           context={context}
+          open={open}
           onSuccess={handleSuccess}
-          deleting={deleting}
           onDelete={handleDelete}
         />
       </Modal>
@@ -153,7 +149,7 @@ export function ExpenseTableRow({
   context: "general" | "trip";
   currency: string;
 }) {
-  const { open, setOpen, deleting, handleDelete, handleSuccess } =
+  const { open, setOpen, handleDelete, handleSuccess } =
     useExpenseEditModal(expense.id);
 
   return (
@@ -181,8 +177,8 @@ export function ExpenseTableRow({
           expense={expense}
           categories={categories}
           context={context}
+          open={open}
           onSuccess={handleSuccess}
-          deleting={deleting}
           onDelete={handleDelete}
         />
       </Modal>

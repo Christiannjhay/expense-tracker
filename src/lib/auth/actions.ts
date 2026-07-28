@@ -35,13 +35,13 @@ export async function login(
     return { error: error.message, message: null };
   }
 
-  redirect("/");
+  redirect("/periods?toast=login");
 }
 
 export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  redirect("/login?toast=logout");
 }
 
 export async function signup(
@@ -87,5 +87,5 @@ export async function signup(
     };
   }
 
-  redirect("/");
+  redirect("/periods?toast=signup");
 }

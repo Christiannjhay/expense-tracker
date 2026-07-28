@@ -7,6 +7,7 @@ import {
   type CategoryFormState,
 } from "@/lib/categories/actions";
 import { Modal } from "@/app/modal";
+import { useToast } from "@/app/toast-context";
 
 const initialState: CategoryFormState = { error: null };
 
@@ -17,6 +18,7 @@ export function CategoryQuickAdd({
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const { showToast } = useToast();
   const action = createCategory.bind(null, context);
   const [state, formAction, pending] = useActionState(action, initialState);
 
@@ -28,6 +30,7 @@ export function CategoryQuickAdd({
       // local instead of delegated, so the linter can see it directly.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpen(false);
+      showToast("Category created");
       router.refresh();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

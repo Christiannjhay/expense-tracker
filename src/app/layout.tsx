@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { RegisterServiceWorker } from "./register-service-worker";
 import { Nav } from "./nav";
+import { ToastProvider } from "./toast-context";
+import { ToastFlashReader } from "./toast-flash-reader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +36,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0d9488",
+  themeColor: "#18181b",
 };
 
 export default function RootLayout({
@@ -47,9 +50,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Nav />
-        {children}
-        <RegisterServiceWorker />
+        <ToastProvider>
+          <Suspense fallback={null}>
+            <ToastFlashReader />
+          </Suspense>
+          <Nav />
+          {children}
+          <RegisterServiceWorker />
+        </ToastProvider>
       </body>
     </html>
   );

@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import {
   updateDisplayName,
   type ProfileFormState,
 } from "@/lib/profile/actions";
+import { useToast } from "@/app/toast-context";
 
 const initialState: ProfileFormState = { error: null, success: false };
 
@@ -17,6 +18,14 @@ export function AccountForm({
     updateDisplayName,
     initialState
   );
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    if (state.success) {
+      showToast("Saved");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.success]);
 
   return (
     <form action={formAction} className="mt-6 flex flex-col gap-4">
@@ -40,12 +49,6 @@ export function AccountForm({
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}
-        </p>
-      )}
-
-      {state.success && (
-        <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
-          Saved.
         </p>
       )}
 

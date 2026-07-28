@@ -120,7 +120,7 @@ export async function createPeriod(
     return { error: error.message };
   }
 
-  redirect(`/periods/${period.id}`);
+  redirect(`/periods/${period.id}?toast=period-created`);
 }
 
 export async function updatePeriod(

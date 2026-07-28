@@ -6,6 +6,8 @@ import { deletePeriod, updatePeriod } from "@/lib/periods/actions";
 import { PeriodForm, type PeriodFormDefaults } from "@/app/periods/period-form";
 import { Modal } from "@/app/modal";
 import { PencilIcon } from "@/app/icons";
+import { useToast } from "@/app/toast-context";
+import { DeleteConfirm } from "@/app/delete-confirm";
 
 export function PeriodEditModal({
   periodId,
@@ -17,25 +19,16 @@ export function PeriodEditModal({
   defaults: PeriodFormDefaults;
 }) {
   const [open, setOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const router = useRouter();
+  const { showToast } = useToast();
 
   async function handleDelete() {
-    if (
-      !window.confirm(
-        `Delete "${periodName}" and all its expenses? This can't be undone.`
-      )
-    ) {
-      return;
-    }
-    setDeleting(true);
     const result = await deletePeriod(periodId);
-    if (result.error) {
-      window.alert(result.error);
-      setDeleting(false);
-      return;
+    if (!result.error) {
+      showToast("Period deleted");
+      router.push("/periods");
     }
-    router.push("/periods");
+    return result;
   }
 
   return (
@@ -57,19 +50,18 @@ export function PeriodEditModal({
           pendingLabel="Saving…"
           onSuccess={() => {
             setOpen(false);
+            showToast("Period saved");
             router.refresh();
           }}
         />
 
         <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={deleting}
-            className="flex h-10 w-full items-center justify-center rounded-lg bg-red-600 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {deleting ? "Deleting…" : "Delete period"}
-          </button>
+          <DeleteConfirm
+            key={String(open)}
+            label="Delete period"
+            confirmMessage={`Delete "${periodName}" and all its expenses? This can't be undone.`}
+            onConfirm={handleDelete}
+          />
         </div>
       </Modal>
     </>
