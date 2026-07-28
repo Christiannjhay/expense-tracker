@@ -1,0 +1,138 @@
+"use client";
+
+import { useActionState, useEffect } from "react";
+import type { ExpenseFormState } from "@/lib/expenses/actions";
+import { CategoryQuickAdd } from "@/app/periods/[id]/category-quick-add";
+
+const initialState: ExpenseFormState = { error: null };
+
+const inputClass =
+  "rounded-lg border border-zinc-300 px-3 py-2.5 text-base text-zinc-900 outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-100 dark:focus:ring-zinc-100";
+const labelClass = "text-sm font-medium text-zinc-700 dark:text-zinc-300";
+
+export type ExpenseFormDefaults = {
+  category_id: number;
+  amount: number;
+  description: string | null;
+  spent_at: string;
+};
+
+export function ExpenseForm({
+  action,
+  categories,
+  context,
+  defaults,
+  submitLabel = "Add expense",
+  pendingLabel = "Adding…",
+  onSuccess,
+}: {
+  action: (
+    prevState: ExpenseFormState,
+    formData: FormData
+  ) => Promise<ExpenseFormState>;
+  categories: { id: number; name: string }[];
+  context: "general" | "trip";
+  defaults?: ExpenseFormDefaults;
+  submitLabel?: string;
+  pendingLabel?: string;
+  onSuccess?: () => void;
+}) {
+  const [state, formAction, pending] = useActionState(action, initialState);
+  const today = new Date().toISOString().slice(0, 10);
+
+  useEffect(() => {
+    if (state.success) {
+      onSuccess?.();
+    }
+    // onSuccess intentionally omitted: it's a fresh closure each render,
+    // and only a real state.success transition should trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.success]);
+
+  return (
+    <form action={formAction} className="mt-6 flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <label htmlFor="category_id" className={labelClass}>
+            Category
+          </label>
+          <CategoryQuickAdd context={context} />
+        </div>
+        <select
+          id="category_id"
+          name="category_id"
+          required
+          defaultValue={defaults?.category_id ?? ""}
+          className={inputClass}
+        >
+          <option value="" disabled>
+            Select a category
+          </option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="amount" className={labelClass}>
+          Amount
+        </label>
+        <input
+          id="amount"
+          name="amount"
+          type="number"
+          min="0.01"
+          step="0.01"
+          required
+          defaultValue={defaults?.amount}
+          placeholder="0.00"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="spent_at" className={labelClass}>
+          Date
+        </label>
+        <input
+          id="spent_at"
+          name="spent_at"
+          type="date"
+          required
+          defaultValue={defaults?.spent_at ?? today}
+          className={inputClass}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="description" className={labelClass}>
+          Description (optional)
+        </label>
+        <input
+          id="description"
+          name="description"
+          defaultValue={defaults?.description ?? undefined}
+          placeholder="e.g. Groceries at Trader Joe's"
+          className={inputClass}
+        />
+      </div>
+
+      {state.error && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {state.error}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={pending}
+        className="mt-2 flex h-11 items-center justify-center rounded-lg bg-zinc-900 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      >
+        {pending ? pendingLabel : submitLabel}
+      </button>
+    </form>
+  );
+}
