@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/session";
 import { getProfile } from "@/lib/profile/queries";
 import { BackLink } from "@/app/back-link";
 import { AccountForm } from "./account-form";
@@ -9,16 +9,13 @@ export const metadata: Metadata = {
 };
 
 export default async function AccountPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
 
   if (!user) {
     return null;
   }
 
-  const profile = await getProfile(supabase, user.id);
+  const profile = await getProfile(user.id);
 
   return (
     <main className="mx-auto w-full max-w-lg flex-1 px-4 py-10">

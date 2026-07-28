@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/session";
 import { formatBudget, formatPeriodRange } from "@/lib/periods/format";
 import { formatMoney } from "@/lib/currency";
 import type { Period } from "@/lib/periods/types";
@@ -23,15 +24,13 @@ export const metadata: Metadata = {
 
 export default async function PeriodsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return null;
-  }
 
-  const [{ data: periods, error }, { data: expenses }, profile] =
+  // getAuthedUser() doesn't gate the periods/expenses queries — RLS
+  // already scopes them via the request's cookies — so it runs
+  // alongside them instead of blocking them first.
+  const [user, { data: periods, error }, { data: expenses }] =
     await Promise.all([
+      getAuthedUser(),
       supabase
         .from("periods")
         .select("*")
@@ -41,8 +40,13 @@ export default async function PeriodsPage() {
         .from("expenses")
         .select("amount, categories(name)")
         .returns<{ amount: number; categories: { name: string } | null }[]>(),
-      getProfile(supabase, user.id),
     ]);
+
+  if (!user) {
+    return null;
+  }
+
+  const profile = await getProfile(user.id);
 
   const showBudget =
     periods?.some((period) => period.total_budget != null) ?? false;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/session";
 import { getProfile } from "@/lib/profile/queries";
 import { formatBudget, formatPeriodRange } from "@/lib/periods/format";
 import type { Period } from "@/lib/periods/types";
@@ -25,14 +26,11 @@ export default async function PeriodDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return null;
-  }
-
-  const [{ data: period }, { data: expenses }, profile] = await Promise.all([
+  // getAuthedUser() doesn't gate the period/expenses queries — RLS
+  // already scopes them via the request's cookies — so it runs
+  // alongside them instead of blocking them first.
+  const [user, { data: period }, { data: expenses }] = await Promise.all([
+    getAuthedUser(),
     supabase.from("periods").select("*").eq("id", id).maybeSingle<Period>(),
     supabase
       .from("expenses")
@@ -40,12 +38,17 @@ export default async function PeriodDetailPage({
       .eq("period_id", id)
       .order("spent_at", { ascending: false })
       .returns<ExpenseWithCategory[]>(),
-    getProfile(supabase, user.id),
   ]);
+
+  if (!user) {
+    return null;
+  }
 
   if (!period) {
     notFound();
   }
+
+  const profile = await getProfile(user.id);
 
   const context = period.type === "trip" ? "trip" : "general";
   const { data: categories } = await supabase

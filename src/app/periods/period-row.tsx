@@ -19,10 +19,13 @@ export function PeriodRow({
   showBudget: boolean;
 }) {
   const router = useRouter();
+  const href = `/periods/${id}`;
 
   return (
     <tr
-      onClick={() => router.push(`/periods/${id}`)}
+      onClick={() => router.push(href)}
+      onMouseEnter={() => router.prefetch(href)}
+      onTouchStart={() => router.prefetch(href)}
       className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900"
     >
       <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-50">

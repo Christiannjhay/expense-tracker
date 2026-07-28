@@ -1,17 +1,14 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/session";
 import { getProfile } from "@/lib/profile/queries";
 import { ProfileMenu } from "./profile-menu";
 
 export async function Nav() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
 
   let displayName: string | null = null;
   if (user) {
-    const profile = await getProfile(supabase, user.id);
+    const profile = await getProfile(user.id);
     displayName = profile.full_name || user.email || null;
   }
 
