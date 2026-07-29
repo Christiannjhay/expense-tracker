@@ -1,0 +1,45 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { createContribution } from "@/lib/goals/actions";
+import type { Goal } from "@/lib/goals/types";
+import { BackLink } from "@/app/back-link";
+import { ContributionForm } from "@/app/target/goals/contribution-form";
+
+export const metadata: Metadata = {
+  title: "Add contribution — Expense Tracker",
+};
+
+export default async function NewContributionPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data: goal } = await supabase
+    .from("goals")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle<Goal>();
+
+  if (!goal) {
+    notFound();
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-lg flex-1 px-4 py-10">
+      <BackLink href={`/target/goals/${goal.id}`} />
+
+      <h1 className="mt-4 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        Add contribution
+      </h1>
+      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        This contribution will be added to {goal.name} only.
+      </p>
+
+      <ContributionForm action={createContribution.bind(null, goal.id)} />
+    </main>
+  );
+}

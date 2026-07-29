@@ -10,6 +10,10 @@ const MESSAGES: Record<string, string> = {
   signup: "Account created",
   "period-created": "Period created",
   "expense-created": "Expense added",
+  "debt-created": "Debt created",
+  "payment-created": "Payment added",
+  "goal-created": "Goal created",
+  "contribution-created": "Contribution added",
 };
 
 export function ToastFlashReader() {

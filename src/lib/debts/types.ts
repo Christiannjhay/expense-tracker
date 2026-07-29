@@ -1,0 +1,16 @@
+export type Debt = {
+  id: number;
+  user_id: string;
+  name: string;
+  total_amount: number;
+  started_at: string;
+  created_at: string;
+};
+
+export type DebtPayment = {
+  id: number;
+  debt_id: number;
+  amount: number;
+  paid_at: string;
+  created_at: string;
+};
