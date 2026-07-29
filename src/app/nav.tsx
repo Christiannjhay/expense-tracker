@@ -1,36 +1,30 @@
 import Link from "next/link";
 import { getAuthedUser } from "@/lib/supabase/session";
-import { getProfile } from "@/lib/profile/queries";
 import { ProfileMenu } from "./profile-menu";
+import { HomeIcon, TargetIcon } from "@/app/icons";
+import { navItemClass, navLabelClass } from "./nav-styles";
 
 export async function Nav() {
   const user = await getAuthedUser();
 
-  let displayName: string | null = null;
-  if (user) {
-    const profile = await getProfile(user.id);
-    displayName = profile.full_name || user.email || null;
-  }
-
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-        <Link
-          href="/"
-          className="text-sm font-semibold text-zinc-900 dark:text-zinc-50"
-        >
-          Expense Tracker
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)] dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="mx-auto flex max-w-4xl items-center justify-center gap-4 px-2 py-1.5">
+        <Link href="/" aria-label="Home" className={navItemClass}>
+          <HomeIcon className="h-6 w-6" />
+          <span className={navLabelClass}>Home</span>
         </Link>
 
         {user && (
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-zinc-500 dark:text-zinc-400">
-              {displayName}
-            </span>
+          <>
+            <Link href="/target" aria-label="Target" className={navItemClass}>
+              <TargetIcon className="h-6 w-6" />
+              <span className={navLabelClass}>Target</span>
+            </Link>
             <ProfileMenu />
-          </div>
+          </>
         )}
       </div>
-    </header>
+    </nav>
   );
 }

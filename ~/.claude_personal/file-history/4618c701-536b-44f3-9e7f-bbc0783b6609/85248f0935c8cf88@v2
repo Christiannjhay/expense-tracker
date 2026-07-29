@@ -1,0 +1,23 @@
+export default function Loading() {
+  return (
+    <main className="mx-auto w-full max-w-4xl flex-1 animate-pulse px-4 py-10">
+      <div className="flex items-center justify-between">
+        <div className="h-8 w-28 rounded-md bg-zinc-200 dark:bg-zinc-800" />
+        <div className="h-10 w-32 rounded-lg bg-zinc-200 dark:bg-zinc-800" />
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="h-[68px] rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900"
+          />
+        ))}
+      </div>
+
+      <div className="mt-4 h-40 rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900" />
+
+      <div className="mt-6 h-64 rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900" />
+    </main>
+  );
+}

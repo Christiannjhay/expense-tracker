@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/session";
 import { getProfile } from "@/lib/profile/queries";
 import { formatBudget, formatPeriodRange } from "@/lib/periods/format";
+import { formatMoney } from "@/lib/currency";
 import type { Period } from "@/lib/periods/types";
 import type { ExpenseWithCategory } from "@/lib/expenses/types";
 import { aggregateByCategory } from "@/lib/expenses/aggregate";
@@ -58,6 +59,9 @@ export default async function PeriodDetailPage({
     .order("name");
 
   const categorySlices = aggregateByCategory(expenses ?? []);
+  const totalSpent = (expenses ?? []).reduce((sum, e) => sum + e.amount, 0);
+  const balance =
+    period.total_budget != null ? period.total_budget - totalSpent : null;
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
@@ -88,7 +92,11 @@ export default async function PeriodDetailPage({
           Spending by category
         </h2>
 
-        <dl className="mt-3 grid grid-cols-3 gap-4 text-sm">
+        <dl
+          className={`mt-3 grid gap-4 text-sm ${
+            balance != null ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"
+          }`}
+        >
           <div>
             <dt className="text-zinc-500 dark:text-zinc-400">Type</dt>
             <dd className="capitalize text-zinc-900 dark:text-zinc-50">
@@ -107,6 +115,20 @@ export default async function PeriodDetailPage({
               {formatBudget(period.total_budget, profile.currency)}
             </dd>
           </div>
+          {balance != null && (
+            <div>
+              <dt className="text-zinc-500 dark:text-zinc-400">Balance</dt>
+              <dd
+                className={
+                  balance < 0
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-zinc-900 dark:text-zinc-50"
+                }
+              >
+                {formatMoney(balance, profile.currency)}
+              </dd>
+            </div>
+          )}
         </dl>
 
         <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">

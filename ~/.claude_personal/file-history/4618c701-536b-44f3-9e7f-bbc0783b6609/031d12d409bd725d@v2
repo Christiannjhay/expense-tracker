@@ -1,0 +1,3 @@
+export const navItemClass =
+  "flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50";
+export const navLabelClass = "text-[11px] font-medium";

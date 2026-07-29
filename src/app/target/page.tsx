@@ -1,0 +1,61 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { getAuthedUser } from "@/lib/supabase/session";
+import { BanknotesIcon, FlagIcon } from "@/app/icons";
+
+export const metadata: Metadata = {
+  title: "Target — Expense Tracker",
+};
+
+const cards = [
+  {
+    href: "/target/debt-tracker",
+    icon: BanknotesIcon,
+    title: "Debt Tracker",
+    description: "Keep tabs on balances and pay-down progress.",
+  },
+  {
+    href: "/target/goals",
+    icon: FlagIcon,
+    title: "Goals",
+    description: "Set savings targets and track progress toward them.",
+  },
+];
+
+export default async function TargetPage() {
+  const user = await getAuthedUser();
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
+      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+        Target
+      </h1>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {cards.map(({ href, icon: Icon, title, description }) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900 dark:active:bg-zinc-800"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50">
+              <Icon />
+            </span>
+            <div>
+              <p className="font-semibold text-zinc-900 dark:text-zinc-50">
+                {title}
+              </p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                {description}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </main>
+  );
+}

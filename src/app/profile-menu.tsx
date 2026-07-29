@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { logout } from "@/lib/auth/actions";
+import { navItemClass, navLabelClass } from "./nav-styles";
 
 function ProfileIcon() {
   return (
@@ -48,13 +49,14 @@ export function ProfileMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-label="Profile menu"
         aria-expanded={open}
-        className="flex text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+        className={navItemClass}
       >
         <ProfileIcon />
+        <span className={navLabelClass}>Profile</span>
       </button>
 
       {open && (
-        <div className="absolute right-0 z-10 mt-2 w-40 overflow-hidden rounded-lg border border-zinc-200 bg-white text-sm shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="absolute right-0 bottom-full z-10 mb-2 w-40 overflow-hidden rounded-lg border border-zinc-200 bg-white text-sm shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
           <Link
             href="/account"
             onClick={() => setOpen(false)}

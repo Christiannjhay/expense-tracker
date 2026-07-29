@@ -58,3 +58,9 @@ body {
     filter: invert(1);
   }
 }
+
+/* Lets the native select dropdown arrow follow dark backgrounds instead of
+   always rendering black. */
+select {
+  color-scheme: light dark;
+}
