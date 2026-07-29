@@ -1,0 +1,29 @@
+import type { ComponentType } from "react";
+
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  className = "mt-6",
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  description?: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center gap-3 rounded-xl border border-[var(--border)] bg-transparent p-10 text-center dark:bg-zinc-950 ${className}`}
+    >
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-[var(--border)] dark:bg-zinc-800">
+        <Icon className="h-6 w-6" />
+      </span>
+      <p className="font-semibold text-[var(--foreground)]">{title}</p>
+      {description && (
+        <p className="max-w-sm text-sm text-[var(--foreground-muted)]">
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}

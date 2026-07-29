@@ -1,0 +1,36 @@
+import { cache } from "react";
+import { createClient } from "@/lib/supabase/server";
+import type { AccentColor, ProfileColors, ThemeMode } from "@/lib/appearance";
+
+export type Profile = {
+  full_name: string | null;
+  currency: string;
+  theme_mode: ThemeMode;
+} & ProfileColors;
+
+// Same rationale as getAuthedUser: Nav plus the current page both need
+// the profile on every navigation, so this is memoized per-request.
+export const getProfile = cache(async (userId: string): Promise<Profile> => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select(
+      "full_name, currency, theme_mode, accent_color, accent_hex, bg_light_hex, bg_dark_hex, text_light_hex, text_dark_hex, text_muted_light_hex, text_muted_dark_hex"
+    )
+    .eq("id", userId)
+    .maybeSingle();
+
+  return {
+    full_name: data?.full_name ?? null,
+    currency: data?.currency ?? "USD",
+    theme_mode: (data?.theme_mode as ThemeMode) ?? "light",
+    accent_color: (data?.accent_color as AccentColor) ?? "zinc",
+    accent_hex: data?.accent_hex ?? null,
+    bg_light_hex: data?.bg_light_hex ?? null,
+    bg_dark_hex: data?.bg_dark_hex ?? null,
+    text_light_hex: data?.text_light_hex ?? null,
+    text_dark_hex: data?.text_dark_hex ?? null,
+    text_muted_light_hex: data?.text_muted_light_hex ?? null,
+    text_muted_dark_hex: data?.text_muted_dark_hex ?? null,
+  };
+});

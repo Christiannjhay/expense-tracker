@@ -1,0 +1,61 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { getAuthedUser } from "@/lib/supabase/session";
+import { BanknotesIcon, FlagIcon } from "@/app/icons";
+
+export const metadata: Metadata = {
+  title: "Target — Expense Tracker",
+};
+
+const cards = [
+  {
+    href: "/target/debt-tracker",
+    icon: BanknotesIcon,
+    title: "Debt Tracker",
+    description: "Keep tabs on balances and pay-down progress.",
+  },
+  {
+    href: "/target/goals",
+    icon: FlagIcon,
+    title: "Goals",
+    description: "Set savings targets and track progress toward them.",
+  },
+];
+
+export default async function TargetPage() {
+  const user = await getAuthedUser();
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
+      <h1 className="text-2xl font-semibold text-[var(--foreground)]">
+        Target
+      </h1>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {cards.map(({ href, icon: Icon, title, description }) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-transparent p-4 transition-colors hover:bg-[var(--hover-bg)] active:bg-[var(--hover-bg)] dark:bg-zinc-950"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-[var(--border)] dark:bg-zinc-800">
+              <Icon />
+            </span>
+            <div>
+              <p className="font-semibold text-[var(--foreground)]">
+                {title}
+              </p>
+              <p className="text-sm text-[var(--foreground-muted)]">
+                {description}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </main>
+  );
+}

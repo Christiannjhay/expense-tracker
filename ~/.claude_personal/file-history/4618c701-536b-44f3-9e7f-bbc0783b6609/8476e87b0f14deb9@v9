@@ -1,0 +1,383 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { updateAppearance } from "@/lib/profile/actions";
+import { useToast } from "@/app/toast-context";
+import {
+  ACCENT_COLORS,
+  ACCENT_LABELS,
+  ACCENT_SWATCHES,
+  DEFAULT_COLORS,
+  THEME_MODES,
+  THEME_MODE_LABELS,
+  autoMutedForeground,
+  isValidHex,
+  resolveTheme,
+  themeStyleTag,
+  type AccentColor,
+  type ProfileColors,
+  type ThemeMode,
+} from "@/lib/appearance";
+
+const ONE_YEAR = 60 * 60 * 24 * 365;
+
+function setCookie(name: string, value: string) {
+  document.cookie = `${name}=${value}; path=/; max-age=${ONE_YEAR}; SameSite=Lax`;
+}
+
+function applyMode(mode: ThemeMode) {
+  document.documentElement.classList.toggle("dark", mode === "dark");
+  setCookie("theme-mode", mode);
+}
+
+function applyColors(colors: ProfileColors) {
+  const styleTag = document.getElementById("theme-vars");
+  if (styleTag) {
+    styleTag.textContent = themeStyleTag(resolveTheme(colors));
+  }
+  setCookie("theme-colors", encodeURIComponent(JSON.stringify(colors)));
+}
+
+// The three mode-scoped color slots. Which underlying profile field each
+// one reads/writes depends on whichever mode (Light/Dark) is currently
+// selected above, so editing always applies to "the mode you're looking at".
+type ColorSlot = "bg" | "text" | "textMuted";
+
+const SLOT_KEYS: Record<ColorSlot, Record<ThemeMode, keyof ProfileColors>> = {
+  bg: { light: "bg_light_hex", dark: "bg_dark_hex" },
+  text: { light: "text_light_hex", dark: "text_dark_hex" },
+  textMuted: { light: "text_muted_light_hex", dark: "text_muted_dark_hex" },
+};
+
+const GRADIENT_KEYS: Record<ThemeMode, keyof ProfileColors> = {
+  light: "gradient_light",
+  dark: "gradient_dark",
+};
+
+function Toggle({
+  checked,
+  onChange,
+  disabled,
+  label,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  disabled: boolean;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative h-6 w-11 shrink-0 rounded-full border border-[var(--border)] transition-colors disabled:cursor-not-allowed ${
+        checked ? "bg-[var(--accent)]" : "bg-zinc-300 dark:bg-zinc-700"
+      }`}
+    >
+      <span
+        className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full shadow-sm transition-transform ${
+          checked ? "translate-x-5 bg-[var(--accent-fg)]" : "translate-x-0 bg-white"
+        }`}
+      />
+    </button>
+  );
+}
+
+const swatchInputClass =
+  "h-9 w-9 cursor-pointer rounded-full border-0 bg-transparent p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-2 [&::-webkit-color-swatch]:border-[var(--border)] dark:[&::-webkit-color-swatch]:border-zinc-800 [&::-webkit-color-swatch-wrapper]:rounded-full [&::-webkit-color-swatch-wrapper]:p-0";
+
+function ColorField({
+  label,
+  hint,
+  value,
+  defaultValue,
+  onChange,
+  onReset,
+  disabled,
+}: {
+  label: string;
+  hint?: string;
+  value: string | null;
+  defaultValue: string;
+  onChange: (hex: string) => void;
+  onReset: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <input
+          type="color"
+          value={value ?? defaultValue}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className={swatchInputClass}
+          aria-label={label}
+        />
+        <div>
+          <p className="text-sm font-medium text-[var(--foreground-muted)]">
+            {label}
+          </p>
+          <p className="text-xs uppercase text-[var(--foreground-muted)]">
+            {value ?? defaultValue}
+            {!value && hint && <span className="ml-1 normal-case">· {hint}</span>}
+          </p>
+        </div>
+      </div>
+      {value && (
+        <button
+          type="button"
+          onClick={onReset}
+          disabled={disabled}
+          className="text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:cursor-not-allowed"
+        >
+          Reset
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function AppearanceSettings({
+  initialThemeMode,
+  initialColors,
+}: {
+  initialThemeMode: ThemeMode;
+  initialColors: ProfileColors;
+}) {
+  const [mode, setMode] = useState(initialThemeMode);
+  const [colors, setColors] = useState<ProfileColors>(initialColors);
+  const [pending, startTransition] = useTransition();
+  const { showToast } = useToast();
+
+  function persist(nextMode: ThemeMode, nextColors: ProfileColors) {
+    startTransition(async () => {
+      const result = await updateAppearance(nextMode, nextColors);
+      if (result.error) showToast(result.error);
+    });
+  }
+
+  function handleModeChange(next: ThemeMode) {
+    if (next === mode) return;
+    setMode(next);
+    applyMode(next);
+    persist(next, colors);
+  }
+
+  function handleAccentChange(next: AccentColor) {
+    const nextColors: ProfileColors = {
+      ...colors,
+      accent_color: next,
+      accent_hex:
+        next === "custom" ? colors.accent_hex ?? "#2563eb" : colors.accent_hex,
+    };
+    setColors(nextColors);
+    applyColors(nextColors);
+    persist(mode, nextColors);
+  }
+
+  function handleAccentHexChange(hex: string) {
+    if (!isValidHex(hex)) return;
+    const nextColors: ProfileColors = {
+      ...colors,
+      accent_color: "custom",
+      accent_hex: hex,
+    };
+    setColors(nextColors);
+    applyColors(nextColors);
+    persist(mode, nextColors);
+  }
+
+  function handleSlotChange(slot: ColorSlot, hex: string) {
+    if (!isValidHex(hex)) return;
+    const key = SLOT_KEYS[slot][mode];
+    const nextColors: ProfileColors = { ...colors, [key]: hex };
+    setColors(nextColors);
+    applyColors(nextColors);
+    persist(mode, nextColors);
+  }
+
+  function handleSlotReset(slot: ColorSlot) {
+    const key = SLOT_KEYS[slot][mode];
+    const nextColors: ProfileColors = { ...colors, [key]: null };
+    setColors(nextColors);
+    applyColors(nextColors);
+    persist(mode, nextColors);
+  }
+
+  function handleGradientToggle(next: boolean) {
+    const key = GRADIENT_KEYS[mode];
+    const nextColors: ProfileColors = { ...colors, [key]: next };
+    setColors(nextColors);
+    applyColors(nextColors);
+    persist(mode, nextColors);
+  }
+
+  const resolvedMode = resolveTheme(colors)[mode];
+  const bgDefault = mode === "dark" ? DEFAULT_COLORS.bgDark : DEFAULT_COLORS.bgLight;
+  const textDefault = mode === "dark" ? DEFAULT_COLORS.fgDark : DEFAULT_COLORS.fgLight;
+  const mutedDefault = autoMutedForeground(
+    resolvedMode.foreground,
+    resolvedMode.background
+  );
+
+  return (
+    <div className="mt-8 border-t border-[var(--border)] pt-6">
+      <h2 className="text-sm font-semibold text-[var(--foreground)]">
+        Appearance
+      </h2>
+
+      <div className="mt-4 flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-[var(--foreground-muted)]">
+          Theme
+        </span>
+        <div className="inline-flex w-fit rounded-lg border border-zinc-300 p-1 dark:border-zinc-700">
+          {THEME_MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              disabled={pending}
+              onClick={() => handleModeChange(m)}
+              aria-pressed={mode === m}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                mode === m
+                  ? "bg-[var(--accent)] text-[var(--accent-fg)]"
+                  : "text-[var(--foreground-muted)] hover:bg-zinc-100 dark:hover:bg-zinc-900"
+              }`}
+            >
+              {THEME_MODE_LABELS[m]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-[var(--foreground-muted)]">
+          Accent color
+        </span>
+        <div className="flex flex-wrap gap-4">
+          {ACCENT_COLORS.filter((c) => c !== "custom").map((c) => (
+            <button
+              key={c}
+              type="button"
+              disabled={pending}
+              onClick={() => handleAccentChange(c)}
+              aria-label={ACCENT_LABELS[c]}
+              aria-pressed={colors.accent_color === c}
+              className="flex flex-col items-center gap-1.5 disabled:cursor-not-allowed"
+            >
+              <span
+                className={`flex h-9 w-9 items-center justify-center rounded-full ring-2 ring-offset-2 ring-offset-white transition-shadow dark:ring-offset-zinc-950 ${
+                  colors.accent_color === c
+                    ? "ring-zinc-900 dark:ring-zinc-50"
+                    : "ring-transparent"
+                }`}
+                style={{ backgroundColor: ACCENT_SWATCHES[c] }}
+              >
+                {colors.accent_color === c && <CheckIcon />}
+              </span>
+              <span className="text-xs text-[var(--foreground-muted)]">
+                {ACCENT_LABELS[c]}
+              </span>
+            </button>
+          ))}
+
+          <div className="flex flex-col items-center gap-1.5">
+            <label
+              className={`relative flex h-9 w-9 items-center justify-center rounded-full ring-2 ring-offset-2 ring-offset-white transition-shadow dark:ring-offset-zinc-950 ${
+                colors.accent_color === "custom"
+                  ? "ring-zinc-900 dark:ring-zinc-50"
+                  : "ring-transparent"
+              }`}
+              style={{
+                background:
+                  colors.accent_color === "custom" && colors.accent_hex
+                    ? colors.accent_hex
+                    : "conic-gradient(from 0deg, #ef4444, #eab308, #22c55e, #3b82f6, #a855f7, #ef4444)",
+              }}
+            >
+              <input
+                type="color"
+                value={colors.accent_hex ?? "#2563eb"}
+                onChange={(e) => handleAccentHexChange(e.target.value)}
+                disabled={pending}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                aria-label="Custom accent color"
+              />
+              {colors.accent_color === "custom" && <CheckIcon />}
+            </label>
+            <span className="text-xs text-[var(--foreground-muted)]">
+              Custom
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-3">
+        <span className="text-sm font-medium text-[var(--foreground-muted)]">
+          Colors for {THEME_MODE_LABELS[mode]} mode
+        </span>
+        <ColorField
+          label="Background"
+          value={(colors[SLOT_KEYS.bg[mode]] as string | null) ?? null}
+          defaultValue={bgDefault}
+          onChange={(hex) => handleSlotChange("bg", hex)}
+          onReset={() => handleSlotReset("bg")}
+          disabled={pending}
+        />
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-[var(--foreground-muted)]">
+              Gradient background
+            </p>
+            <p className="text-xs text-[var(--foreground-muted)]">
+              Auto-generated from the background color above
+            </p>
+          </div>
+          <Toggle
+            checked={colors[GRADIENT_KEYS[mode]] === true}
+            onChange={handleGradientToggle}
+            disabled={pending}
+            label="Gradient background"
+          />
+        </div>
+        <ColorField
+          label="Text"
+          value={(colors[SLOT_KEYS.text[mode]] as string | null) ?? null}
+          defaultValue={textDefault}
+          onChange={(hex) => handleSlotChange("text", hex)}
+          onReset={() => handleSlotReset("text")}
+          disabled={pending}
+        />
+        <ColorField
+          label="Muted text"
+          hint="auto"
+          value={(colors[SLOT_KEYS.textMuted[mode]] as string | null) ?? null}
+          defaultValue={mutedDefault}
+          onChange={(hex) => handleSlotChange("textMuted", hex)}
+          onReset={() => handleSlotReset("textMuted")}
+          disabled={pending}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      className="pointer-events-none h-4 w-4 text-white mix-blend-difference"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+    </svg>
+  );
+}

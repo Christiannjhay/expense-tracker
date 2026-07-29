@@ -1,0 +1,122 @@
+import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
+import { cookies } from "next/headers";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import { RegisterServiceWorker } from "./register-service-worker";
+import { Nav } from "./nav";
+import { ToastProvider } from "./toast-context";
+import { ToastFlashReader } from "./toast-flash-reader";
+import {
+  ACCENT_COLORS,
+  THEME_MODES,
+  resolveTheme,
+  themeStyleTag,
+  type ProfileColors,
+} from "@/lib/appearance";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Expense Tracker",
+  description: "Track and manage your personal expenses.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Expense Tracker",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#18181b",
+};
+
+const DEFAULT_PROFILE_COLORS: ProfileColors = {
+  accent_color: "zinc",
+  accent_hex: null,
+  bg_light_hex: null,
+  bg_dark_hex: null,
+  text_light_hex: null,
+  text_dark_hex: null,
+  text_muted_light_hex: null,
+  text_muted_dark_hex: null,
+};
+
+function readHex(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function readProfileColors(raw: string | undefined): ProfileColors {
+  if (!raw) return DEFAULT_PROFILE_COLORS;
+  try {
+    const parsed = JSON.parse(decodeURIComponent(raw));
+    return {
+      accent_color: ACCENT_COLORS.includes(parsed.accent_color)
+        ? parsed.accent_color
+        : "zinc",
+      accent_hex: readHex(parsed.accent_hex),
+      bg_light_hex: readHex(parsed.bg_light_hex),
+      bg_dark_hex: readHex(parsed.bg_dark_hex),
+      text_light_hex: readHex(parsed.text_light_hex),
+      text_dark_hex: readHex(parsed.text_dark_hex),
+      text_muted_light_hex: readHex(parsed.text_muted_light_hex),
+      text_muted_dark_hex: readHex(parsed.text_muted_dark_hex),
+    };
+  } catch {
+    return DEFAULT_PROFILE_COLORS;
+  }
+}
+
+export default async function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const cookieStore = await cookies();
+
+  const modeCookie = cookieStore.get("theme-mode")?.value;
+  const mode = THEME_MODES.includes(modeCookie as (typeof THEME_MODES)[number])
+    ? (modeCookie as (typeof THEME_MODES)[number])
+    : "light";
+
+  const profileColors = readProfileColors(cookieStore.get("theme-colors")?.value);
+  const themeStyle = themeStyleTag(resolveTheme(profileColors));
+
+  return (
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased ${
+        mode === "dark" ? "dark" : ""
+      }`}
+    >
+      <body className="min-h-full flex flex-col pb-24">
+        <style id="theme-vars" dangerouslySetInnerHTML={{ __html: themeStyle }} />
+        <ToastProvider>
+          <Suspense fallback={null}>
+            <ToastFlashReader />
+          </Suspense>
+          {children}
+          <Nav />
+          <RegisterServiceWorker />
+        </ToastProvider>
+      </body>
+    </html>
+  );
+}

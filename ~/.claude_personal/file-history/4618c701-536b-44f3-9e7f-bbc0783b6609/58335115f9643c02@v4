@@ -1,0 +1,104 @@
+"use client";
+
+import { useActionState, useEffect } from "react";
+import type { GoalFormState } from "@/lib/goals/actions";
+
+const initialState: GoalFormState = { error: null };
+
+const inputClass =
+  "rounded-lg border border-zinc-300 px-3 py-2.5 text-base text-[var(--foreground)] outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-100 dark:focus:ring-zinc-100";
+const labelClass = "text-sm font-medium text-[var(--foreground-muted)]";
+
+export type GoalFormDefaults = {
+  name: string;
+  description: string | null;
+  target_date: string;
+};
+
+export function GoalForm({
+  action,
+  defaults,
+  submitLabel = "Create goal",
+  pendingLabel = "Creating…",
+  onSuccess,
+}: {
+  action: (
+    prevState: GoalFormState,
+    formData: FormData
+  ) => Promise<GoalFormState>;
+  defaults?: GoalFormDefaults;
+  submitLabel?: string;
+  pendingLabel?: string;
+  onSuccess?: () => void;
+}) {
+  const [state, formAction, pending] = useActionState(action, initialState);
+  const today = new Date().toISOString().slice(0, 10);
+
+  useEffect(() => {
+    if (state.success) {
+      onSuccess?.();
+    }
+    // onSuccess intentionally omitted: it's a fresh closure each render,
+    // and only a real state.success transition should trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.success]);
+
+  return (
+    <form action={formAction} className="mt-6 flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="name" className={labelClass}>
+          Name
+        </label>
+        <input
+          id="name"
+          name="name"
+          required
+          defaultValue={defaults?.name}
+          placeholder="e.g. Emergency fund, New laptop"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="description" className={labelClass}>
+          Description (optional)
+        </label>
+        <input
+          id="description"
+          name="description"
+          defaultValue={defaults?.description ?? undefined}
+          placeholder="What's this goal for?"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="target_date" className={labelClass}>
+          Target date
+        </label>
+        <input
+          id="target_date"
+          name="target_date"
+          type="date"
+          required
+          defaultValue={defaults?.target_date ?? today}
+          className={inputClass}
+        />
+      </div>
+
+      {state.error && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {state.error}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={pending}
+        className="mt-2 flex h-11 items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-medium text-[var(--accent-fg)] transition-colors hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {pending ? pendingLabel : submitLabel}
+      </button>
+    </form>
+  );
+}

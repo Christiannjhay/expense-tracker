@@ -1,0 +1,44 @@
+import type { Metadata } from "next";
+import { getAuthedUser } from "@/lib/supabase/session";
+import { getProfile } from "@/lib/profile/queries";
+import { BackLink } from "@/app/back-link";
+import { SettingsForm } from "./settings-form";
+import { AppearanceSettings } from "./appearance-settings";
+
+export const metadata: Metadata = {
+  title: "Settings — Expense Tracker",
+};
+
+export default async function SettingsPage() {
+  const user = await getAuthedUser();
+
+  if (!user) {
+    return null;
+  }
+
+  const profile = await getProfile(user.id);
+
+  return (
+    <main className="mx-auto w-full max-w-lg flex-1 px-4 py-10">
+      <BackLink href="/periods" />
+
+      <h1 className="mt-4 text-2xl font-semibold text-[var(--foreground)]">
+        Settings
+      </h1>
+
+      <SettingsForm initialCurrency={profile.currency} />
+
+      <AppearanceSettings
+        initialThemeMode={profile.theme_mode}
+        initialColors={{
+          accent_color: profile.accent_color,
+          accent_hex: profile.accent_hex,
+          bg_light_hex: profile.bg_light_hex,
+          bg_dark_hex: profile.bg_dark_hex,
+          text_light_hex: profile.text_light_hex,
+          text_dark_hex: profile.text_dark_hex,
+        }}
+      />
+    </main>
+  );
+}

@@ -1,0 +1,184 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/session";
+import { formatBudget, formatPeriodRange } from "@/lib/periods/format";
+import { formatMoney } from "@/lib/currency";
+import type { Period } from "@/lib/periods/types";
+import { getProfile } from "@/lib/profile/queries";
+import { aggregateByCategory } from "@/lib/expenses/aggregate";
+import {
+  BanknotesIcon,
+  ChartBarIcon,
+  PeriodTypeIcon,
+  PlusIcon,
+  RectangleStackIcon,
+} from "@/app/icons";
+import { EmptyState } from "@/app/empty-state";
+import { PeriodRow } from "./period-row";
+import { SpendingByCategory } from "./spending-by-category";
+
+export const metadata: Metadata = {
+  title: "Periods — Expense Tracker",
+};
+
+export default async function PeriodsPage() {
+  const supabase = await createClient();
+
+  // getAuthedUser() doesn't gate the periods/expenses queries — RLS
+  // already scopes them via the request's cookies — so it runs
+  // alongside them instead of blocking them first.
+  const [user, { data: periods, error }, { data: expenses }] =
+    await Promise.all([
+      getAuthedUser(),
+      supabase
+        .from("periods")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .returns<Period[]>(),
+      supabase
+        .from("expenses")
+        .select("amount, categories(name)")
+        .returns<{ amount: number; categories: { name: string } | null }[]>(),
+    ]);
+
+  if (!user) {
+    return null;
+  }
+
+  const profile = await getProfile(user.id);
+
+  const showBudget =
+    periods?.some((period) => period.total_budget != null) ?? false;
+
+  const totalSpent = (expenses ?? []).reduce((sum, e) => sum + e.amount, 0);
+  const categorySlices = aggregateByCategory(expenses ?? []);
+
+  return (
+    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-[var(--foreground)]">
+          Periods
+        </h1>
+        <Link
+          href="/periods/new"
+          className="flex h-10 items-center gap-1.5 rounded-lg bg-[var(--accent)] px-4 text-sm font-medium text-[var(--accent-fg)] transition-colors hover:bg-[var(--accent-hover)]"
+        >
+          <PlusIcon />
+          New period
+        </Link>
+      </div>
+
+      <div className="mt-6 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-transparent p-4 dark:bg-zinc-950">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-[var(--foreground)] dark:bg-zinc-800">
+          <BanknotesIcon />
+        </span>
+        <div>
+          <p className="text-xs text-[var(--foreground-muted)]">
+            Total spent
+          </p>
+          <p className="font-semibold text-[var(--foreground)]">
+            {formatMoney(totalSpent, profile.currency)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-[var(--border)] bg-transparent p-5 dark:bg-zinc-950">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+          <ChartBarIcon className="h-4 w-4 text-[var(--foreground-muted)]" />
+          Spending by category
+        </h2>
+        <div className="mt-3">
+          <SpendingByCategory
+            slices={categorySlices}
+            currency={profile.currency}
+            showTotal={false}
+          />
+        </div>
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-6 text-sm text-red-600 dark:text-red-400">
+          {error.message}
+        </p>
+      )}
+
+      {!error && periods && periods.length === 0 && (
+        <EmptyState
+          icon={RectangleStackIcon}
+          title="No periods yet"
+          description="Create one to start tracking expenses."
+        />
+      )}
+
+      {!error && periods && periods.length > 0 && (
+        <>
+          {/* Mobile: stacked cards — a 4-column table reads too tight below sm. */}
+          <div className="mt-6 flex flex-col gap-3 sm:hidden">
+            {periods.map((period) => (
+              <Link
+                key={period.id}
+                href={`/periods/${period.id}`}
+                className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-transparent p-4 active:bg-[var(--hover-bg)] dark:bg-zinc-950"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-[var(--foreground)]">
+                    {period.name}
+                  </span>
+                  <span className="inline-flex shrink-0 items-center gap-1 text-xs capitalize text-[var(--foreground-muted)]">
+                    <PeriodTypeIcon
+                      type={period.type}
+                      className="h-3.5 w-3.5 text-[var(--foreground-muted)]"
+                    />
+                    {period.type}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm text-[var(--foreground-muted)]">
+                  <span>{formatPeriodRange(period)}</span>
+                  {period.total_budget != null && (
+                    <span>
+                      {formatBudget(period.total_budget, profile.currency)}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* sm and up: table */}
+          <div className="mt-6 hidden overflow-x-auto rounded-xl border border-[var(--border)] sm:block">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-[var(--foreground-muted)] dark:bg-zinc-900">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Type</th>
+                  <th className="px-4 py-3 font-medium">When</th>
+                  {showBudget && (
+                    <th className="px-4 py-3 font-medium">Budget</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {periods.map((period) => (
+                  <PeriodRow
+                    key={period.id}
+                    id={period.id}
+                    name={period.name}
+                    type={period.type}
+                    when={formatPeriodRange(period)}
+                    budget={
+                      period.total_budget != null
+                        ? formatBudget(period.total_budget, profile.currency)
+                        : null
+                    }
+                    showBudget={showBudget}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </main>
+  );
+}

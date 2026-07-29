@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* Dark mode is driven entirely by an explicit .dark class on <html> (set
+   from the user's saved Light/Dark choice) rather than the
+   prefers-color-scheme media query — this is a website with its own
+   Light/Dark setting, not something that should follow the OS. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  /* Muted/secondary text (labels, captions, timestamps) derives
+     automatically from whatever foreground/background are in effect —
+     including fully custom ones — so it always stays legible without
+     needing its own setting. */
+  --foreground-muted: color-mix(in srgb, var(--foreground) 65%, var(--background));
+  /* Card/panel borders and dividers derive from foreground+background too,
+     so they stay visible against any custom background instead of sitting
+     at a fixed gray that can wash out or vanish depending on what's picked. */
+  --border: color-mix(in srgb, var(--foreground) 15%, var(--background));
+  /* Subtle hover/active wash for clickable cards — a tint of the muted text
+     color rather than a fixed gray, so it stays visible on any background. */
+  --hover-bg: color-mix(in srgb, var(--foreground-muted) 12%, transparent);
+  /* Table header bands: same neutral palette as --border (derived from
+     foreground+background), but blended stronger so the header row always
+     reads as emphasized rather than blending into the body rows. */
+  --thead-bg: color-mix(in srgb, var(--foreground) 8%, var(--background));
+  --accent: #18181b;
+  --accent-hover: #27272a;
+  --accent-fg: #ffffff;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  color-scheme: dark;
+}
+
+/* The values above are just a static fallback. The actual accent,
+   background, and foreground colors (which can be user-customized presets
+   or arbitrary hex values, and can differ between light/dark) are computed
+   per-request from the signed-in user's profile and injected as a <style>
+   block in the root layout, which — being later in the document — wins the
+   cascade over these defaults. See src/lib/appearance.ts. */
+
+/* Validated categorical chart palette (fixed hue order, never cycled). */
+.viz-root {
+  --series-1: #2a78d6; /* blue */
+  --series-2: #eb6834; /* orange */
+  --series-3: #1baf7a; /* aqua */
+  --series-4: #eda100; /* yellow */
+  --series-5: #e87ba4; /* magenta */
+  --series-6: #008300; /* green */
+  --series-7: #4a3aa7; /* violet */
+  --series-8: #e34948; /* red */
+  --series-other: #898781; /* muted, for the folded "Other" slot */
+}
+.dark .viz-root {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --series-other: #898781;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Date inputs get a dark background in dark mode, where the browser's
+   default black calendar icon is nearly invisible. */
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}

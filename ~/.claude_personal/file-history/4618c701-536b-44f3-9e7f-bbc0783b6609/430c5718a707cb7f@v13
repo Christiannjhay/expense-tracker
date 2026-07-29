@@ -1,0 +1,30 @@
+import Link from "next/link";
+import { getAuthedUser } from "@/lib/supabase/session";
+import { ProfileMenu } from "./profile-menu";
+import { HomeIcon, TargetIcon } from "@/app/icons";
+import { navItemClass, navLabelClass } from "./nav-styles";
+
+export async function Nav() {
+  const user = await getAuthedUser();
+
+  return (
+    <nav className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-fit -translate-x-1/2 rounded-full border border-[var(--border)] bg-white shadow-lg shadow-zinc-900/10 dark:bg-zinc-950 dark:shadow-black/40">
+      <div className="flex items-center justify-center gap-1 px-1.5 py-1.5">
+        <Link href="/" aria-label="Home" className={navItemClass}>
+          <HomeIcon className="h-6 w-6" />
+          <span className={navLabelClass}>Home</span>
+        </Link>
+
+        {user && (
+          <>
+            <Link href="/target" aria-label="Target" className={navItemClass}>
+              <TargetIcon className="h-6 w-6" />
+              <span className={navLabelClass}>Target</span>
+            </Link>
+            <ProfileMenu />
+          </>
+        )}
+      </div>
+    </nav>
+  );
+}

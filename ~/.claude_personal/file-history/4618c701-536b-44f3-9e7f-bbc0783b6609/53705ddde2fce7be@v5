@@ -1,0 +1,228 @@
+export const THEME_MODES = ["light", "dark"] as const;
+export type ThemeMode = (typeof THEME_MODES)[number];
+
+export const ACCENT_COLORS = [
+  "zinc",
+  "blue",
+  "indigo",
+  "violet",
+  "rose",
+  "orange",
+  "custom",
+] as const;
+export type AccentColor = (typeof ACCENT_COLORS)[number];
+
+export const THEME_MODE_LABELS: Record<ThemeMode, string> = {
+  light: "Light",
+  dark: "Dark",
+};
+
+export const ACCENT_LABELS: Record<AccentColor, string> = {
+  zinc: "Zinc",
+  blue: "Blue",
+  indigo: "Indigo",
+  violet: "Violet",
+  rose: "Rose",
+  orange: "Orange",
+  custom: "Custom",
+};
+
+// Representative dot color for each preset in the picker UI. Zinc itself
+// inverts between light/dark at runtime, so its swatch uses a neutral
+// mid-gray stand-in rather than pure black or white.
+export const ACCENT_SWATCHES: Record<Exclude<AccentColor, "custom">, string> =
+  {
+    zinc: "#71717a",
+    blue: "#2563eb",
+    indigo: "#4f46e5",
+    violet: "#7c3aed",
+    rose: "#e11d48",
+    orange: "#ea580c",
+  };
+
+const PRESET_ACCENT_HEX: Record<
+  Exclude<AccentColor, "custom" | "zinc">,
+  string
+> = {
+  blue: "#2563eb",
+  indigo: "#4f46e5",
+  violet: "#7c3aed",
+  rose: "#e11d48",
+  orange: "#ea580c",
+};
+
+export const DEFAULT_COLORS = {
+  bgLight: "#ffffff",
+  fgLight: "#171717",
+  bgDark: "#0a0a0a",
+  fgDark: "#ededed",
+};
+
+// Ratio the auto-derived muted text blends toward the foreground (vs. the
+// background); mirrors the color-mix() formula in globals.css so the JS
+// preview and the actual rendered CSS never disagree.
+const MUTED_MIX_RATIO = 0.65;
+
+const HEX_RE = /^#[0-9a-f]{6}$/i;
+
+export function isValidHex(value: string): value is string {
+  return HEX_RE.test(value);
+}
+
+function hexToRgb(hex: string) {
+  const n = parseInt(hex.slice(1), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function toHexByte(value: number) {
+  return Math.max(0, Math.min(255, Math.round(value)))
+    .toString(16)
+    .padStart(2, "0");
+}
+
+function rgbToHex(r: number, g: number, b: number) {
+  return `#${toHexByte(r)}${toHexByte(g)}${toHexByte(b)}`;
+}
+
+export function darken(hex: string, amount = 0.14): string {
+  const { r, g, b } = hexToRgb(hex);
+  return rgbToHex(r * (1 - amount), g * (1 - amount), b * (1 - amount));
+}
+
+// Blends two colors, `ratio` of the way from b to a — used to preview the
+// auto-derived muted text color before any override is chosen.
+export function mix(hexA: string, hexB: string, ratio: number): string {
+  const a = hexToRgb(hexA);
+  const b = hexToRgb(hexB);
+  return rgbToHex(
+    a.r * ratio + b.r * (1 - ratio),
+    a.g * ratio + b.g * (1 - ratio),
+    a.b * ratio + b.b * (1 - ratio)
+  );
+}
+
+// Picks readable black/white button text for an arbitrary accent color,
+// using the standard perceived-brightness heuristic.
+export function readableForeground(hex: string): string {
+  const { r, g, b } = hexToRgb(hex);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 150 ? "#18181b" : "#ffffff";
+}
+
+export type ProfileColors = {
+  accent_color: AccentColor;
+  accent_hex: string | null;
+  bg_light_hex: string | null;
+  bg_dark_hex: string | null;
+  text_light_hex: string | null;
+  text_dark_hex: string | null;
+  text_muted_light_hex: string | null;
+  text_muted_dark_hex: string | null;
+};
+
+export type ModeColors = {
+  accent: string;
+  accentHover: string;
+  accentFg: string;
+  background: string;
+  foreground: string;
+  // null means "let CSS derive it automatically from foreground/background"
+  // (see the color-mix() default in globals.css) rather than a fixed hex.
+  foregroundMuted: string | null;
+};
+
+export type ResolvedTheme = { light: ModeColors; dark: ModeColors };
+
+// Single source of truth for turning a profile's stored appearance
+// preferences into concrete hex values for both modes. Runs the same on the
+// server (to render the per-request <style> block) and the client (to apply
+// a change instantly, before the round trip to persist it completes).
+export function resolveTheme(profile: ProfileColors): ResolvedTheme {
+  let accentLight: string;
+  let accentDark: string;
+
+  if (
+    profile.accent_color === "custom" &&
+    profile.accent_hex &&
+    isValidHex(profile.accent_hex)
+  ) {
+    accentLight = profile.accent_hex;
+    accentDark = profile.accent_hex;
+  } else if (profile.accent_color === "zinc") {
+    accentLight = "#18181b";
+    accentDark = "#fafafa";
+  } else if (profile.accent_color in PRESET_ACCENT_HEX) {
+    const hex =
+      PRESET_ACCENT_HEX[profile.accent_color as keyof typeof PRESET_ACCENT_HEX];
+    accentLight = hex;
+    accentDark = hex;
+  } else {
+    accentLight = "#18181b";
+    accentDark = "#fafafa";
+  }
+
+  const bgLight =
+    profile.bg_light_hex && isValidHex(profile.bg_light_hex)
+      ? profile.bg_light_hex
+      : DEFAULT_COLORS.bgLight;
+  const bgDark =
+    profile.bg_dark_hex && isValidHex(profile.bg_dark_hex)
+      ? profile.bg_dark_hex
+      : DEFAULT_COLORS.bgDark;
+  const fgLight =
+    profile.text_light_hex && isValidHex(profile.text_light_hex)
+      ? profile.text_light_hex
+      : DEFAULT_COLORS.fgLight;
+  const fgDark =
+    profile.text_dark_hex && isValidHex(profile.text_dark_hex)
+      ? profile.text_dark_hex
+      : DEFAULT_COLORS.fgDark;
+
+  const mutedLight =
+    profile.text_muted_light_hex && isValidHex(profile.text_muted_light_hex)
+      ? profile.text_muted_light_hex
+      : null;
+  const mutedDark =
+    profile.text_muted_dark_hex && isValidHex(profile.text_muted_dark_hex)
+      ? profile.text_muted_dark_hex
+      : null;
+
+  return {
+    light: {
+      accent: accentLight,
+      accentHover: darken(accentLight),
+      accentFg: readableForeground(accentLight),
+      background: bgLight,
+      foreground: fgLight,
+      foregroundMuted: mutedLight,
+    },
+    dark: {
+      // Zinc's dark accent (#fafafa) is already near-white; darkening it
+      // would push it toward the light preset's hover shade instead of
+      // reading as "dimmed", so it lightens the other direction there.
+      accent: accentDark,
+      accentHover:
+        profile.accent_color === "zinc" ? "#e4e4e7" : darken(accentDark),
+      accentFg: readableForeground(accentDark),
+      background: bgDark,
+      foreground: fgDark,
+      foregroundMuted: mutedDark,
+    },
+  };
+}
+
+// Computes the same "auto" muted color the CSS color-mix() default would
+// produce, for previewing in the picker before an explicit override exists.
+export function autoMutedForeground(foreground: string, background: string): string {
+  return mix(foreground, background, MUTED_MIX_RATIO);
+}
+
+export function themeStyleTag(theme: ResolvedTheme): string {
+  const cssVars = (c: ModeColors) => {
+    let vars = `--accent:${c.accent};--accent-hover:${c.accentHover};--accent-fg:${c.accentFg};--background:${c.background};--foreground:${c.foreground};`;
+    // Omitted when null so the color-mix() default in globals.css applies.
+    if (c.foregroundMuted) vars += `--foreground-muted:${c.foregroundMuted};`;
+    return vars;
+  };
+  return `:root{${cssVars(theme.light)}}.dark{${cssVars(theme.dark)}}`;
+}
