@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+<<<<<<< HEAD
   experimental: {
     // Every page here is dynamic (auth depends on cookies()), so without
     // this, Next.js neither prefetches nor caches them client-side —
@@ -11,6 +12,9 @@ const nextConfig: NextConfig = {
       dynamic: 30,
     },
   },
+=======
+  /* config options here */
+>>>>>>> 59688ca (Initial commit from Create Next App)
 };
 
 export default nextConfig;

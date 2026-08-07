@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
   "name": "expense-tracker",
+=======
+  "name": "budget-app",
+>>>>>>> 59688ca (Initial commit from Create Next App)
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,9 +13,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.9",
     "next": "16.2.12",
+=======
+    "next": "16.2.6",
+>>>>>>> 59688ca (Initial commit from Create Next App)
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -21,7 +29,11 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
+<<<<<<< HEAD
     "eslint-config-next": "16.2.12",
+=======
+    "eslint-config-next": "16.2.6",
+>>>>>>> 59688ca (Initial commit from Create Next App)
     "tailwindcss": "^4",
     "typescript": "^5"
   }
